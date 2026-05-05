@@ -1,0 +1,9 @@
+# Project-specific: snsitive data & outputs
+data/
+.secrets/
+.env
+*.parquet
+*.csv
+mlruns/
+outputs/
+EOF
