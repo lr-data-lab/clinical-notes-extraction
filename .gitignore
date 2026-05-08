@@ -1,9 +1,21 @@
 # Project-specific: snsitive data & outputs
+
+# Data 
 data/
 .secrets/
 .env
+.config
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Outputs
 *.parquet
 *.csv
+
 mlruns/
 outputs/
 EOF
