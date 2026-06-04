@@ -1,13 +1,17 @@
 [project]
 name = "clinical-notes-extraction"
 version = "0.1.0"
-description = "Structured extraction from MIMIC clinical notes using local LLMs"
+description = "Structured extraction of Admission Medication and Discharge Medication from MIMIC discharge notes using local LLMs"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "db-dtypes>=1.5.1",
+    "dotenv>=0.9.9",
     "google-cloud-bigquery>=3.41.0",
+    "google-cloud-bigquery-storage>=2.39.0",
+    "pandas>=2.3.3",
     "pyarrow>=24.0.0",
+    "tqdm>=4.67.3",
 ]
 authors = [{ name = "Luís Ramoa" }]
 
