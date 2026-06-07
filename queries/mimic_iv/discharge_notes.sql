@@ -1,4 +1,3 @@
--- discharge_notes.sql
 -- MIMIC-IV discharge summaries: fetch only the columns we need.
 
 -- WITH final AS (
@@ -25,7 +24,7 @@
       -- 2. Patient Age on Discharge Note
       SAFE_CAST(FLOOR(
           (DATETIME_DIFF(n.charttime, DATETIME(p.anchor_year, 1, 1, 0, 0, 0), DAY) / 365.25) + p.anchor_age
-      ) AS INT64) AS patient_age_on_discharge_note
+      ) AS INT64) AS patient_age_on_discharge
 
   FROM
       `physionet-data.mimiciv_note.discharge` n

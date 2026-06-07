@@ -9,6 +9,7 @@ dependencies = [
     "dotenv>=0.9.9",
     "google-cloud-bigquery>=3.41.0",
     "google-cloud-bigquery-storage>=2.39.0",
+    "matplotlib>=3.10.9",
     "pandas>=2.3.3",
     "pyarrow>=24.0.0",
     "tqdm>=4.67.3",
@@ -21,3 +22,8 @@ clinical-notes-extraction = "clinical_notes_extraction:main"
 [build-system]
 requires = ["uv_build>=0.11.8,<0.12.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "nbstripout>=0.9.1",
+]
