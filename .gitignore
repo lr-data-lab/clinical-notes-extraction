@@ -5,8 +5,8 @@ data/
 .secrets/
 .env
 .config
-scripts/information_extraction/medications_on_admission/data/
-scripts/information_extraction/medications_on_discharge/data/
+scripts/3_information_extraction/medications_on_admission/data/
+scripts/3_information_extraction/medications_on_discharge/data/
 .venv/
 __pycache__/
 *.pyc
