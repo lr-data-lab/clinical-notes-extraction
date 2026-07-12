@@ -1,0 +1,48 @@
+# Zero-shot prompt for the "Medications on Admission" pipeline.
+# Placeholders filled at runtime: {expected_output}, {note_text}.
+
+expected_output: |
+  {
+    "medications": [
+      {
+          "span_text": "string | not null",
+          "start": "int | not null",
+          "end": "int | not null",
+          "attributes": {
+              "Active Substance": "string | null",
+              "Commercial Name": "string | null",
+              "Dosage Form": "string | null",
+              "Dose": "string | null",
+              "Posology/Dosing Regimen": "string | null",
+              "Prescribing Physician": "string | null",
+              "Additional Information": "string | null"
+          }
+      }
+    ]
+  }
+
+prompt: |
+  # Zero-shot task
+
+  Extract all medications listed in the **"Medications on Admission"** section of the clinical note below. 
+  The note is a full discharge summary -- locate the admission medication section yourself and ignore every other section (including "Discharge Medications").
+
+  For each medication, return the verbatim span and its structured attributes.
+  Do not add any text outside the extractions.
+
+  ## Expected output
+
+  For each medication found, produce one extraction whose text is the **verbatim span** of that medication line, and whose attributes follow this exact JSON object:
+
+  {expected_output}
+
+  Rules:
+
+  - Every key must always be present. Use `null` (not `""`, not `"N/A"`) when the value is not stated in the text.
+  - If **all seven attribute values are null** for an extraction, output the object as `null`.
+  - Do not invent values. Only fill a field if the information is written in the note.
+  - Keep the extracted span text exactly as it appears in the source (same casing, punctuation and spacing) so it can be aligned to character offsets.
+
+  ## Clinical note
+
+  {note_text}
