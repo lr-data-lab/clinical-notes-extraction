@@ -1,25 +1,28 @@
 # Zero-shot prompt for the "Medications on Admission" pipeline.
-# Placeholders filled at runtime: {expected_output}, {note_text}.
+# Placeholders filled at runtime: {expected_template}, {note_text}.
 
-expected_output: |
-  {
-    "medications": [
-      {
-          "span_text": "string | not null",
-          "start": "int | not null",
-          "end": "int | not null",
-          "attributes": {
-              "Active Substance": "string | null",
-              "Commercial Name": "string | null",
-              "Dosage Form": "string | null",
-              "Dose": "string | null",
-              "Posology/Dosing Regimen": "string | null",
-              "Prescribing Physician": "string | null",
-              "Additional Information": "string | null"
-          }
-      }
-    ]
-  }
+expected_template: |
+    {
+        "note_id": "string note_null",
+        "medication_on_admission_text": "string | null",
+        "start": "string | null",
+        "end": "string | null",
+        "medications": [
+            {
+                "span_text": "string | null",
+                "start": "int | null",
+                "end": "int | null",
+                "attributes": {
+                    "Active Substance": "string | null",
+                    "Commercial Name": "string | null",
+                    "Dosage Form": "string | null",
+                    "Dose": "string | null",
+                    "Posology/Dosing Regimen": "string | null",
+                    "Prescribing Physician": "string | null"
+                }
+            }
+        ]
+    }
 
 prompt: |
   # Zero-shot task
@@ -34,7 +37,7 @@ prompt: |
 
   For each medication found, produce one extraction whose text is the **verbatim span** of that medication line, and whose attributes follow this exact JSON object:
 
-  {expected_output}
+  {expected_template}
 
   Rules:
 
