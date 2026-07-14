@@ -10,35 +10,12 @@
 examples_pool_file: "prompts/admission/few_shot_examples.json"
 
 # How many examples to select per input note.
-n_examples: 2
+n_examples: 1
 
 # Selection strategy, resolved in Python (this key documents the choice):
 #   "same_cluster"  -> examples from the input note's cluster
 #   "nearest"       -> k nearest dev notes by embedding similarity
 selection_strategy: "same_cluster"
-
-expected_template: |
-    {
-        "note_id": "string note_null",
-        "medication_on_admission_text": "string | null",
-        "start": "string | null",
-        "end": "string | null",
-        "medications": [
-            {
-                "span_text": "string | null",
-                "start": "int | null",
-                "end": "int | null",
-                "attributes": {
-                    "Active Substance": "string | null",
-                    "Commercial Name": "string | null",
-                    "Dosage Form": "string | null",
-                    "Dose": "string | null",
-                    "Posology/Dosing Regimen": "string | null",
-                    "Prescribing Physician": "string | null"
-                }
-            }
-        ]
-    }
 
 # Template used to render each selected example before injection.
 example_template: |

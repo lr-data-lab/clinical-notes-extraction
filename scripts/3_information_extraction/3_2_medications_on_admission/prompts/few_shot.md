@@ -4,29 +4,6 @@
 
 examples_file: "prompts/admission/few_shot_prompt_2_annotations_examples.json"
 
-expected_template: |
-    {
-        "note_id": "string note_null",
-        "medication_on_admission_text": "string | null",
-        "start": "string | null",
-        "end": "string | null",
-        "medications": [
-            {
-                "span_text": "string | null",
-                "start": "int | null",
-                "end": "int | null",
-                "attributes": {
-                    "Active Substance": "string | null",
-                    "Commercial Name": "string | null",
-                    "Dosage Form": "string | null",
-                    "Dose": "string | null",
-                    "Posology/Dosing Regimen": "string | null",
-                    "Prescribing Physician": "string | null"
-                }
-            }
-        ]
-    }
-
 # Template used to render each example before injection into {examples}.
 example_template: |
   ### Example {index}
