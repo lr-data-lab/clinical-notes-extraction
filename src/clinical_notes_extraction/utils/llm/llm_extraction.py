@@ -17,7 +17,7 @@ from pathlib import Path
 import requests
 from pydantic import ValidationError
 
-from clinical_notes_extraction.utils.schema import ExtractionOutput
+from clinical_notes_extraction.utils.llm.schemas import ExtractionOutput
 
 
 def build_prompt(
@@ -99,6 +99,7 @@ def extract_note(
         return json.loads(out_path.read_text(encoding="utf-8"))
 
     prompt = build_prompt(template, expected_template, note_text, examples)
+    print(prompt)
 
     record = {"note_id": note_id, "model": model, "strategy": strategy}
 

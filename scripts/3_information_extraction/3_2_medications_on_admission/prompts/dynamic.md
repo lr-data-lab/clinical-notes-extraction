@@ -5,7 +5,6 @@
 # with example_template and injected into {examples}.
 # Placeholders filled at runtime: {expected_template}, {examples}, {note_text}.
 
-# Pool of annotated dev examples to select from (never from the test split).
 # Each entry: note_id, cluster, text, medications.
 examples_pool_file: "prompts/admission/few_shot_examples.json"
 
