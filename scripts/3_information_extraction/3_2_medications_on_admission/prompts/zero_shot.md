@@ -1,28 +1,28 @@
-# Zero-shot prompt for the "Medications on Admission" pipeline.
-# Placeholders filled at runtime: {expected_template}, {note_text}.
+# Zero-shot task
 
-prompt: |
-  # Zero-shot task
+Extract all medications listed in the **"Medications on Admission"** section of the clinical note below.
 
-  Extract all medications listed in the **"Medications on Admission"** section of the clinical note below. 
-  The note is a full discharge summary -- locate the admission medication section yourself and ignore every other section (including "Discharge Medications").
+The note is a full discharge summary — locate the admission medication section yourself and ignore every other section, including "Discharge Medications".
 
-  For each medication, return the verbatim span and its structured attributes.
-  Do not add any text outside the extractions.
+## Expected output
 
-  ## Expected output
+Return a **single** JSON object matching the template below exactly: the same top-level keys, the same nesting, the same key names. Every medication found in the section becomes one entry in the `medications` array. Do not return one object per medication, and do not flatten the attributes.
 
-  For each medication found, produce one extraction whose text is the **verbatim span** of that medication line, and whose attributes follow this exact JSON object:
+{EXPECTED_TEMPLATE}
 
-  {expected_template}
+## Rules
 
-  Rules:
+- Every key must always be present, at every level. Use `null` when a value is not stated in the text — never `""`, never `"N/A"`, including for free-text fields such as `administration_instructions` and `notes`.
+- Do not invent values or keys. Only fill a field if the information is written in the note.
+- If a medication line yields no attribute values at all, omit that entry rather than emitting `null` inside the array.
+- If the section lists no medications, return `"medications": []`.
+- Keep every span exactly as it appears in the source (same casing, punctuation and spacing) so it can be aligned to character offsets.
+- Return only the JSON object. No preamble, no explanation, no markdown code fences.
 
-  - Every key must always be present. Use `null` (not `""`, not `"N/A"`) when the value is not stated in the text.
-  - If **all seven attribute values are null** for an extraction, output the object as `null`.
-  - Do not invent values. Only fill a field if the information is written in the note.
-  - Keep the extracted span text exactly as it appears in the source (same casing, punctuation and spacing) so it can be aligned to character offsets.
+## Note id
 
-  ## Clinical note
+{NOTE_ID}
 
-  {note_text}
+## Clinical note
+
+{NOTE_TEXT}

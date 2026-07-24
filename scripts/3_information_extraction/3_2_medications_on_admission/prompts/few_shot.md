@@ -1,45 +1,34 @@
-# Few-shot prompt for the "Medications on Admission" pipeline.
-# Examples live OUTSIDE this file (see few_shot_prompt_2_annotations_examples) and are injected at runtime into the {examples} placeholder.
-# Placeholders filled at runtime: {expected_template}, {examples}, {note_text}.
+# Few-shot task
 
-examples_file: "prompts/admission/few_shot_prompt_2_annotations_examples.json"
+Extract all medications listed in the **"Medications on Admission"** section of the clinical note below.
 
-# Template used to render each example before injection into {examples}.
-example_template: |
-  ### Example {index}
+The note is a full discharge summary — locate the admission medication section yourself and ignore every other section, including "Discharge Medications".
 
-  Clinical note:
-  {input}
+## Expected output
 
-  Output:
-  {output}
+Return a **single** JSON object matching the template below exactly: the same top-level keys, the same nesting, the same key names. Every medication found in the section becomes one entry in the `medications` array. Do not return one object per medication, and do not flatten the attributes.
 
-prompt: |
-  # Few-shot task
+{EXPECTED_TEMPLATE}
 
-  Extract all medications listed in the **"Medications on Admission"** section of the clinical note below. 
-  The note is a full discharge summary -- locate the admission medication section yourself and ignore every other section (including "Discharge Medications").
+## Rules
 
-  For each medication, return the verbatim span and its structured attributes.
-  Do not add any text outside the extractions.
+- Every key must always be present, at every level. Use `null` when a value is not stated in the text — never `""`, never `"N/A"`, including for free-text fields such as `administration_instructions` and `notes`.
+- Do not invent values or keys. Only fill a field if the information is written in the note.
+- If a medication line yields no attribute values at all, omit that entry rather than emitting `null` inside the array.
+- If the section lists no medications, return `"medications": []`.
+- Keep every span exactly as it appears in the source (same casing, punctuation and spacing) so it can be aligned to character offsets.
+- Return only the JSON object. No preamble, no explanation, no markdown code fences.
 
-  ## Expected output
+## Examples
 
-  For each medication found, produce one extraction whose text is the **verbatim span** of that medication line, and whose attributes follow this exact JSON object:
+The following examples show the expected output format. Follow their structure, not their content: the medications in your answer must come from the clinical note at the end of this prompt.
 
-  {expected_template}
+{EXAMPLES}
 
-  Rules:
+## Note id
 
-  - Every key must always be present. Use `null` (not `""`, not `"N/A"`) when the value is not stated in the text.
-  - If **all seven attribute values are null** for an extraction, output the object as `null`.
-  - Do not invent values. Only fill a field if the information is written in the note.
-  - Keep the extracted span text exactly as it appears in the source (same casing, punctuation and spacing) so it can be aligned to character offsets.
+{NOTE_ID}
 
-  ## Examples
+## Clinical note
 
-  {examples}
-
-  ## Clinical note
-
-  {note_text}
+{NOTE_TEXT}
