@@ -4,7 +4,7 @@ Your response must be a single valid JSON object following exactly this structur
 
 ```json
 {
-    "medication_on_admission_text": "string | null",
+    "medications_text": "string | null",
     "flag_is_medication_completed": "boolean | null",
     "medications": [
         {
@@ -30,7 +30,7 @@ Your response must be a single valid JSON object following exactly this structur
 
 ## Structural rules
 
-- Return exactly these three top-level keys: `medication_on_admission_text`, `flag_is_medication_completed` and `medications`. Do not add any other key.
+- Return exactly these three top-level keys: `medications_text`, `flag_is_medication_completed` and `medications`. Do not add any other key.
 - Each medication is an object with exactly two keys: `span_text` and `attributes`. The twelve attribute fields live **inside** the `attributes` object — never at the medication's top level.
 - All twelve attribute keys must be present in every medication, using `null` when the value is not stated. Do not omit keys.
 - `indication` is always an array of strings, even for a single value: `["pain"]`, not `"pain"`.
@@ -39,7 +39,7 @@ Your response must be a single valid JSON object following exactly this structur
 
 ## Field definitions
 
-- **medication_on_admission_text**: The full text of the "Medications on Admission" section, copied verbatim from the note (no corrections, no reformatting). Null if the section is absent.
+- **medications_text**: The full text of the "Medications on Admission" section, copied verbatim from the note (no corrections, no reformatting). Null if the section is absent.
 - **flag_is_medication_completed**: Whether the medication list appears complete. Set to false if the note explicitly indicates the list is incomplete or unreliable (e.g., "unable to verify", "Preadmissions medications listed are incomplete"). Set to true if the note explicitly indicates the list is complete (e.g., "The Preadmission Medication list is accurate and complete."). Null if there is no such indication or it cannot be determined.
 - **medications**: A list with one object per distinct medication mention found in the "Medications on Admission" section. Empty list if the section states no medications (e.g., "None").
 - **span_text**: The exact medication mention as it appears in the note, copied verbatim character by character (no expansion of abbreviations, no spelling or capitalization changes). Null only if no span can be identified.

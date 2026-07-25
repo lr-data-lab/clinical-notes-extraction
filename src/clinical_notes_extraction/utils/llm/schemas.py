@@ -47,7 +47,7 @@ class ExtractionOutput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    medication_on_admission_text: str | None
+    medications_text: str | None
     flag_is_medication_completed: bool | None
     medications: list[Medication]
 
@@ -58,6 +58,6 @@ class GroundTruthNote(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     note_id: str
-    medication_on_admission_text: str | None
+    medications_text: str | None
     flag_is_medication_completed: bool | None
     medications: list[Medication]
