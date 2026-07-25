@@ -30,7 +30,7 @@ Your response must be a single valid JSON object following exactly this structur
 
 ## Structural rules
 
-- Return exactly these four top-level keys: `note_id`, `medication_on_admission_text`, `flag_is_medication_completed` and `medications`. Do not add any other key.
+- Return exactly these three top-level keys: `medication_on_admission_text`, `flag_is_medication_completed` and `medications`. Do not add any other key.
 - Each medication is an object with exactly two keys: `span_text` and `attributes`. The twelve attribute fields live **inside** the `attributes` object — never at the medication's top level.
 - All twelve attribute keys must be present in every medication, using `null` when the value is not stated. Do not omit keys.
 - `indication` is always an array of strings, even for a single value: `["pain"]`, not `"pain"`.
@@ -39,7 +39,6 @@ Your response must be a single valid JSON object following exactly this structur
 
 ## Field definitions
 
-- **note_id**: The unique identifier of the clinical note, copied exactly as provided in the input. Never null.
 - **medication_on_admission_text**: The full text of the "Medications on Admission" section, copied verbatim from the note (no corrections, no reformatting). Null if the section is absent.
 - **flag_is_medication_completed**: Whether the medication list appears complete. Set to false if the note explicitly indicates the list is incomplete or unreliable (e.g., "unable to verify", "Preadmissions medications listed are incomplete"). Set to true if the note explicitly indicates the list is complete (e.g., "The Preadmission Medication list is accurate and complete."). Null if there is no such indication or it cannot be determined.
 - **medications**: A list with one object per distinct medication mention found in the "Medications on Admission" section. Empty list if the section states no medications (e.g., "None").
@@ -55,4 +54,4 @@ Your response must be a single valid JSON object following exactly this structur
 - **duration**: The length of the treatment period (e.g., "for 7 days", "x 2 weeks"), exactly as written in the note. Null if not stated.
 - **indication**: The clinical reason or triggering condition for administering the drug — the "why". Most commonly found after a PRN marker, following the colon separator where present (Q6H:PRN pain → pain). Annotate the span literally, preserving severity qualifiers as written (Pain - Mild, not pain); normalisation is a downstream task. Do not include the PRN marker itself, which belongs to frequency. Always an array of strings, with one element per distinct reason stated. Empty array [] when no indication is stated
 - **administration_instructions**: Free-text directions governing how or under what conditions the drug is given, which do not fit any other attribute. Includes hold parameters (hold for sbp<100, hold if HR<60), intake conditions (take with food, on an empty stomach, do not crush), titration or adjustment rules (titrate to effect, per sliding scale), and application sites (to affected area, both eyes). Distinct from indication: an indication triggers administration, an instruction constrains it. Null when no such text is present.
-- **notes**: [POR DEFINIR]
+- **notes**: Free-text comment attached to the medication line that describes the circumstances or condition of the prescription rather than a property of the drug itself. Captures only text that no other attribute claims: rationale for the therapeutic choice (including its relation to other medications), temporal framing of the prescription within the clinical episode, and indication that the source text is incomplete, truncated, or redacted. Annotated verbatim, without normalizing or expanding abbreviations; does not duplicate content already annotated in another attribute. null when absent.
