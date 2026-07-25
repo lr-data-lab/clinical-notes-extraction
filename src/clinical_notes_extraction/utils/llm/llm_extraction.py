@@ -160,6 +160,16 @@ class ExtractionRunner:
             / f"{note_id}.json"
         )
 
+    def prompt_path(self, note_id: str) -> Path:
+        """Path for the dumped prompt of one cell, when debug_prompt is on."""
+        return (
+            self.results_dir
+            / self.safe_model
+            / "prompts"
+            / self.strategy
+            / f"{note_id}.txt"
+        )
+
     # ------------------------------------------------------------------
     # Prompt
     # ------------------------------------------------------------------
@@ -351,9 +361,9 @@ class ExtractionRunner:
 
         prompt = self.build_prompt(note_id, note_text, examples)
         if self.debug_prompt:
-            print(f"--- PROMPT [{self.model} | {self.strategy} | {note_id}] ---")
-            print(prompt)
-            print("--- END PROMPT ---")
+            dump_path = self.prompt_path(note_id)
+            dump_path.parent.mkdir(parents=True, exist_ok=True)
+            dump_path.write_text(prompt, encoding="utf-8")
 
         # Every key is initialised so the record schema is identical across
         # statuses, and a list of records maps straight onto a DataFrame.

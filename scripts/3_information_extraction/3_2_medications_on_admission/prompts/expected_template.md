@@ -4,7 +4,6 @@ Your response must be a single valid JSON object following exactly this structur
 
 ```json
 {
-    "note_id": "string | not null",
     "medication_on_admission_text": "string | null",
     "flag_is_medication_completed": "boolean | null",
     "medications": [
@@ -20,7 +19,7 @@ Your response must be a single valid JSON object following exactly this structur
                 "route": "string | null",
                 "frequency": "string | null",
                 "duration": "string | null",
-                "indication": "array<string> | null",
+                "indication": "array<string>",
                 "administration_instructions": "string | null",
                 "notes": "string | null"
             }
@@ -54,6 +53,6 @@ Your response must be a single valid JSON object following exactly this structur
 - **route**: The route of administration — the path by which the drug enters the body. Annotate the abbreviation exactly as it appears in the source text. Do not confuse with dosage_form, which describes the physical presentation of the drug (tablet, capsule, solution, patch). A single line may carry both (Ondansetron 4 mg IV ODT → route IV, dosage form ODT). Null when no route is stated.
 - **frequency**: The frequency and schedule of administration (e.g., "PO Daily", "BID", "PRN", "at bedtime"), exactly as written in the note, without the dose amount. Null if not stated.
 - **duration**: The length of the treatment period (e.g., "for 7 days", "x 2 weeks"), exactly as written in the note. Null if not stated.
-- **indication**: The clinical reason or triggering condition for administering the drug — the "why". Most commonly found after a PRN marker, following the colon separator where present (Q6H:PRN pain → pain). Annotate the span literally, preserving severity qualifiers as written (Pain - Mild, not pain); normalisation is a downstream task. Do not include the PRN marker itself, which belongs to frequency. Always an array of strings, with one element per distinct reason stated. Null when no indication is stated.
+- **indication**: The clinical reason or triggering condition for administering the drug — the "why". Most commonly found after a PRN marker, following the colon separator where present (Q6H:PRN pain → pain). Annotate the span literally, preserving severity qualifiers as written (Pain - Mild, not pain); normalisation is a downstream task. Do not include the PRN marker itself, which belongs to frequency. Always an array of strings, with one element per distinct reason stated. Empty array [] when no indication is stated
 - **administration_instructions**: Free-text directions governing how or under what conditions the drug is given, which do not fit any other attribute. Includes hold parameters (hold for sbp<100, hold if HR<60), intake conditions (take with food, on an empty stomach, do not crush), titration or adjustment rules (titrate to effect, per sliding scale), and application sites (to affected area, both eyes). Distinct from indication: an indication triggers administration, an instruction constrains it. Null when no such text is present.
 - **notes**: [POR DEFINIR]

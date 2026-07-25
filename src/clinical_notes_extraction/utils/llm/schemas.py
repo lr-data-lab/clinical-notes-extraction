@@ -24,7 +24,7 @@ class MedicationAttributes(BaseModel):
     route: str | None
     frequency: str | None
     duration: str | None
-    indication: list[str] | None
+    indication: list[str]
     administration_instructions: str | None
     notes: str | None
 
@@ -47,7 +47,6 @@ class ExtractionOutput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    note_id: str | None
     medication_on_admission_text: str | None
     flag_is_medication_completed: bool | None
     medications: list[Medication]
