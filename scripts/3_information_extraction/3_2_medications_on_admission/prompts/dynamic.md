@@ -4,6 +4,12 @@ Extract all medications listed in the **"Medications on Admission"** section of 
 
 The note is a full discharge summary — locate the admission medication section yourself and ignore every other section, including "Discharge Medications".
 
+## Examples
+
+The following examples show the expected output format. Follow their structure, not their content: the medications in your answer must come from the clinical note at the end of this prompt.
+
+{EXAMPLES}
+
 ## Expected output
 
 Return a **single** JSON object matching the template below exactly: the same top-level keys, the same nesting, the same key names. Every medication found in the section becomes one entry in the `medications` array. Do not return one object per medication, and do not flatten the attributes.
@@ -19,16 +25,12 @@ Return a **single** JSON object matching the template below exactly: the same to
 - Keep every span exactly as it appears in the source (same casing, punctuation and spacing) so it can be aligned to character offsets.
 - Return only the JSON object. No preamble, no explanation, no markdown code fences.
 
-## Examples
-
-The following examples show the expected output format. Follow their structure, not their content: the medications in your answer must come from the clinical note at the end of this prompt.
-
-{EXAMPLES}
-
 ## Note id
 
 {NOTE_ID}
 
 ## Clinical note
+
+Clinical note to be used to extract every medication the patient was taking on admission:
 
 {NOTE_TEXT}

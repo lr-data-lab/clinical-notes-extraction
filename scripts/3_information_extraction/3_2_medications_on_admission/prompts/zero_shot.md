@@ -25,4 +25,6 @@ Return a **single** JSON object matching the template below exactly: the same to
 
 ## Clinical note
 
+Clinical note to be used to extract every medication the patient was taking on admission:
+
 {NOTE_TEXT}
