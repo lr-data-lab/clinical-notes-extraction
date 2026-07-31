@@ -1,4 +1,4 @@
-# Few-shot task
+# Task
 
 Extract all medications listed in the **"Medications on Admission"** section of the clinical note below.
 
@@ -10,25 +10,19 @@ The following examples show the expected output format. Follow their structure, 
 
 {EXAMPLES}
 
-## Expected output
+## Expected output template
 
-Return a **single** JSON object matching the template below exactly: the same top-level keys, the same nesting, the same key names. Every medication found in the section becomes one entry in the `medications` array. Do not return one object per medication, and do not flatten the attributes.
+Return a single valid JSON object matching the template below. Output only that object — no explanations, no surrounding text, and no markdown code fences (the fences below delimit the template and must not appear in your output).
+
+Every medication found in the section becomes one entry in the `medications` array of that single object. Never emit more than one top-level object, and never move attribute fields out of the `attributes` object.
 
 {EXPECTED_TEMPLATE}
 
 ## Rules
 
-- Every key must always be present, at every level. Use `null` when a value is not stated in the text — never `""`, never `"N/A"`, including for free-text fields such as `administration_instructions` and `notes`.
-- Do not invent values or keys. Only fill a field if the information is written in the note.
-- If a medication line yields no attribute values at all, omit that entry rather than emitting `null` inside the array.
-- If the section lists no medications, return `"medications": []`.
-- Keep every span exactly as it appears in the source (same casing, punctuation and spacing) so it can be aligned to character offsets.
-- Return only the JSON object. No preamble, no explanation, no markdown code fences.
-
-
-## Note id
-
-{NOTE_ID}
+- Use `null` when a value is not stated in the text — never `""`, never `"N/A"`, including for free-text fields such as `administration_instructions` and `notes`.
+- Do not invent values. Only fill a field if the information is written in the note.
+- Keep every extracted string exactly as it appears in the source (same casing, punctuation and spacing) so spans can be aligned to character offsets.
 
 ## Clinical note
 

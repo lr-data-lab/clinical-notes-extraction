@@ -1,43 +1,45 @@
-# Expected Output Template
-
-Your response must be a single valid JSON object following exactly this structure. Return only the JSON object, with no additional text, explanations, or markdown code fences.
-
 ```json
 {
-    "medications_text": "string | null",
-    "flag_is_medication_completed": "boolean | null",
+    "medications_text": null,
+    "flag_is_medication_completed": null,
     "medications": [
         {
-            "span_text": "string | null",
+            "span_text": null,
             "attributes": {
-                "active_substance": "string | null",
-                "commercial_name": "string | null",
-                "dosage_form": "string | null",
-                "dose": "string | null",
-                "dose_unit": "string | null",
-                "quantity": "string | null",
-                "route": "string | null",
-                "frequency": "string | null",
-                "duration": "string | null",
-                "indication": "array<string>",
-                "administration_instructions": "string | null",
-                "notes": "string | null"
+                "active_substance": null,
+                "commercial_name": null,
+                "dosage_form": null,
+                "dose": null,
+                "dose_unit": null,
+                "quantity": null,
+                "route": null,
+                "frequency": null,
+                "duration": null,
+                "indication": [],
+                "administration_instructions": null,
+                "notes": null
             }
         }
     ]
 }
 ```
 
-## Structural rules
+### Structural rules
 
+- The template above defines the required keys and nesting. The values are placeholders: replace each one with the extracted value, keeping `null` where the note does not state one.
 - Return exactly these three top-level keys: `medications_text`, `flag_is_medication_completed` and `medications`. Do not add any other key.
 - Each medication is an object with exactly two keys: `span_text` and `attributes`. The twelve attribute fields live **inside** the `attributes` object — never at the medication's top level.
 - All twelve attribute keys must be present in every medication, using `null` when the value is not stated. Do not omit keys.
-- `indication` is always an array of strings, even for a single value: `["pain"]`, not `"pain"`.
 - Do not invent keys. Any key not listed above will be rejected.
-- If the section lists no medications, return `"medications": []`.
 
-## Field definitions
+Types:
+
+- `medications_text`, `span_text` and all attributes except `indication`: string or `null`
+- `flag_is_medication_completed`: the JSON literal `true`, `false` or `null` — never a string
+- `indication`: array of strings, `[]` when no indication is stated — even for a single value: `["pain"]`, not `"pain"`
+- `medications`: array of objects, `[]` when the section lists no medications
+
+### Field definitions
 
 - **medications_text**: The full text of the "Medications on Admission" section, copied verbatim from the note (no corrections, no reformatting). Null if the section is absent.
 - **flag_is_medication_completed**: Whether the medication list appears complete. Set to false if the note explicitly indicates the list is incomplete or unreliable (e.g., "unable to verify", "Preadmissions medications listed are incomplete"). Set to true if the note explicitly indicates the list is complete (e.g., "The Preadmission Medication list is accurate and complete."). Null if there is no such indication or it cannot be determined.
@@ -46,7 +48,7 @@ Your response must be a single valid JSON object following exactly this structur
 - **active_substance**: The generic or chemical name of the drug (e.g., "metoprolol", "atorvastatin"), exactly as written in the note. Null if only a commercial name is mentioned.
 - **commercial_name**: The brand or trade name of the drug (e.g., "Lopressor", "Lipitor"), exactly as written in the note. Null if only the generic name is mentioned.
 - **dosage_form**: The physical form of the medication (e.g., "tablet", "capsule", "cream", "solution", "ODT"), exactly as written in the note. Do not confuse with route, which describes the path by which the drug enters the body: PO, IV, SC, IM, PR, SL and TP are routes and never belong here. Null if not stated. Release modifiers (ER, XR, XL, SR, CR, LA, Extended-Release, Sustained-Release) are part of the dosage form and belong here, annotated exactly as written (Diltiazem Extended-Release 120 mg PO DAILY → dosage_form "Extended-Release"). Exception: when the modifier is part of a registered brand name, it stays inside commercial_name and is not repeated here (Toprol XL 50 mg → commercial_name "Toprol XL", dosage_form null).
-- **dose**: The amount of drug expressed in mass or volume. Annotate exactly as written. Its meaning depends on quantity: when quantity is null, dose is the amount administered at one time (Amiodarone 100 mg PO DAILY → 100); when quantity is populated, dose is the strength contained in each unit, and the amount administered is the product of the two (Fluticasone Propionate 110mcg 2 PUFF → 110mcg per puff, 220 mcg administered). Never include count units, units, route, or frequency. Null if no mass, volume (Albuterol Inhaler 2 PUFF IH Q6H:PRN sob → null) or if dose is like "__" ('Vitamin D "___" UNIT PO DAILY' -> "dose": null).
+- **dose**: The amount of drug expressed in mass or volume. Annotate exactly as written. Its meaning depends on quantity: when quantity is null, dose is the amount administered at one time (Amiodarone 100 mg PO DAILY → 100); when quantity is populated, dose is the strength contained in each unit, and the amount administered is the product of the two (Fluticasone Propionate 110mcg 2 PUFF → 110). Never include count units, units, route, or frequency. Null if no mass, volume (Albuterol Inhaler 2 PUFF IH Q6H:PRN sob → null) or if dose is like "__" ('Vitamin D "___" UNIT PO DAILY' -> "dose": null).
 - **dose_unit**: The concentration units (mg, g, mcg, mEq, mL, %, mg/mL, ...) of drug. E.g. Amiodarone 100 mg PO DAILY -> mg . Null if no mass, volume or concentration is stated (Albuterol Inhaler 2 PUFF IH Q6H:PRN sob → null).
 - **quantity**: The number of discrete units administered at one time, expressed in count units — PUFF, DROP, TAB, CAP, SPRAY, PATCH, SUPP. Annotate the number together with its unit, exactly as written (2 PUFF, 1 DROP, 1 TAB), preserving the source's capitalisation. Do not infer a count when none is stated: a line giving only a mass (Amiodarone 100 mg) has quantity null, even though it is implicitly one tablet. Never include frequency information.
 - **route**: The route of administration — the path by which the drug enters the body. Annotate the abbreviation exactly as it appears in the source text. Do not confuse with dosage_form, which describes the physical presentation of the drug (tablet, capsule, solution, patch). A single line may carry both (Ondansetron 4 mg IV ODT → route IV, dosage form ODT). Null when no route is stated.
