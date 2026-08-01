@@ -19,6 +19,14 @@ Both null is a true negative and is not counted (otherwise every run scores
 
 Precision, recall and F1 are micro-averaged over all slots of all notes, per
 model and per prompting strategy.
+
+**Matching criteria.** Equality is always exact; what varies is the
+canonicalisation applied to *both* sides beforehand. The strict criterion
+(``canonicalisers=None``) only forgives surrounding whitespace, and optionally
+capitalisation via ``casefold``. The relaxed criterion additionally applies the
+per-key rules of :data:`RELAXED_CANONICALISERS`. Canonicalisation is a choice of
+measurement, not a repair of the model output: the JSON on disk is never
+rewritten, so both criteria can be reported from the same extraction run.
 """
 
 from __future__ import annotations
@@ -27,11 +35,12 @@ import json
 from dataclasses import dataclass, field
 from itertools import zip_longest
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Callable, Iterable, Mapping
 
 __all__ = [
     "ATTRIBUTES",
     "TOP_LEVEL_KEYS",
+    "RELAXED_CANONICALISERS",
     "Counts",
     "normalise",
     "evaluate_note",
@@ -104,6 +113,67 @@ def normalise(value: Any, *, casefold: bool = False) -> Any:
     if not text:
         return None
     return text.casefold() if casefold else text
+
+
+def _strip_trailing_indication(value: Any, attrs: Mapping[str, Any]) -> Any:
+    """Drop from ``frequency`` a trailing indication that was itself extracted.
+
+    ``"Q12H:PRN anxiety"`` with ``indication == ["anxiety"]`` becomes
+    ``"Q12H:PRN"``. The rule fires only on that duplication: text that is not
+    reproduced in ``indication`` is left untouched, so a plain ``"Q12H PRN"``
+    survives intact, and if ``indication`` is empty nothing is forgiven.
+
+    The rationale is that no information was lost or invented -- the indication
+    was captured in its own field -- so a reviewing clinician would not edit the
+    frequency. A model that puts the indication in ``frequency`` *instead* of in
+    ``indication`` is still penalised, because there is nothing to match against.
+    """
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    indications = attrs.get("indication")
+    if isinstance(indications, str):
+        indications = [indications]
+    if not isinstance(indications, (list, tuple)):
+        return value
+    for indication in indications:
+        if not isinstance(indication, str):
+            continue
+        suffix = indication.strip()
+        # the length guard keeps a frequency equal to the indication from
+        # collapsing to an empty string (which would then read as "absent")
+        if suffix and len(text) > len(suffix) and text.casefold().endswith(suffix.casefold()):
+            return text[: -len(suffix)].strip()
+    return value
+
+
+#: Per-key rules for the relaxed criterion, applied to both gold and prediction
+#: before :func:`normalise`. An empty mapping (or ``None``) is strict exact match.
+#: Keys without a rule are compared exactly as under the strict criterion, so the
+#: two criteria differ only on the keys listed here.
+RELAXED_CANONICALISERS: dict[str, Callable[[Any, Mapping[str, Any]], Any]] = {
+    "frequency": _strip_trailing_indication,
+}
+
+
+def _canonical(
+    key: str,
+    value: Any,
+    attrs: Mapping[str, Any],
+    canonicalisers: Mapping[str, Callable[[Any, Mapping[str, Any]], Any]] | None,
+    casefold: bool,
+) -> Any:
+    """Apply the per-key rule, if any, before the usual normalisation.
+
+    ``attrs`` is the record the value belongs to (the note for top-level keys,
+    the medication's attributes otherwise), so a rule can look at sibling fields.
+    Each side is given its own record: gold never lends context to the
+    prediction, which keeps the comparison symmetric.
+    """
+    rule = canonicalisers.get(key) if canonicalisers else None
+    if rule is not None:
+        value = rule(value, attrs)
+    return normalise(value, casefold=casefold)
 
 
 @dataclass
@@ -192,11 +262,17 @@ def evaluate_note(
     note_id: str = "",
     casefold: bool = False,
     top_level_keys: Iterable[str] = TOP_LEVEL_KEYS,
+    canonicalisers: Mapping[str, Callable[[Any, Mapping[str, Any]], Any]] | None = None,
 ) -> NoteCounts:
     """Compare one predicted note with its annotation, key by key.
 
     ``pred`` may be ``None`` (missing or invalid output): every annotated slot
     then counts as a false negative.
+
+    ``canonicalisers`` selects the matching criterion. ``None`` is strict exact
+    match; pass :data:`RELAXED_CANONICALISERS` for the relaxed criterion. The set
+    of scored slots is identical either way -- only the canonicalisation of the
+    listed keys changes.
     """
     valid = isinstance(pred, Mapping)
     pred_note: Mapping[str, Any] = pred if valid else {}
@@ -212,8 +288,8 @@ def evaluate_note(
         result.add(
             key,
             _compare_slot(
-                normalise(gold.get(key), casefold=casefold),
-                normalise(pred_note.get(key), casefold=casefold),
+                _canonical(key, gold.get(key), gold, canonicalisers, casefold),
+                _canonical(key, pred_note.get(key), pred_note, canonicalisers, casefold),
             ),
         )
 
@@ -225,8 +301,8 @@ def evaluate_note(
             result.add(
                 name,
                 _compare_slot(
-                    normalise(gold_attrs.get(name), casefold=casefold),
-                    normalise(pred_attrs.get(name), casefold=casefold),
+                    _canonical(name, gold_attrs.get(name), gold_attrs, canonicalisers, casefold),
+                    _canonical(name, pred_attrs.get(name), pred_attrs, canonicalisers, casefold),
                 ),
             )
 
@@ -325,6 +401,7 @@ def evaluate_run(
     strategy: str = "",
     casefold: bool = False,
     skip_invalid: bool = False,
+    canonicalisers: Mapping[str, Callable[[Any, Mapping[str, Any]], Any]] | None = None,
 ) -> RunCounts:
     """Evaluate one (model, strategy) over every annotated note.
 
@@ -335,6 +412,8 @@ def evaluate_run(
     ``skip_invalid=True`` drops those notes instead. That answers a different
     question -- "how good is the output *when* the model produces valid JSON" --
     and must always be read together with ``invalid_rate``.
+
+    ``canonicalisers`` selects the matching criterion; see :func:`evaluate_note`.
     """
     run = RunCounts(model=model, strategy=strategy)
     for note_id, gold in gold_by_id.items():
@@ -342,7 +421,13 @@ def evaluate_run(
         if skip_invalid and not isinstance(pred, Mapping):
             continue
         run.notes.append(
-            evaluate_note(gold, pred, note_id=note_id, casefold=casefold)
+            evaluate_note(
+                gold,
+                pred,
+                note_id=note_id,
+                casefold=casefold,
+                canonicalisers=canonicalisers,
+            )
         )
     return run
 
@@ -353,8 +438,12 @@ def evaluate_all(
     *,
     casefold: bool = False,
     skip_invalid: bool = False,
+    canonicalisers: Mapping[str, Callable[[Any, Mapping[str, Any]], Any]] | None = None,
 ) -> dict[tuple[str, str], RunCounts]:
-    """Evaluate a flat list of result records, grouped by (model, strategy)."""
+    """Evaluate a flat list of result records, grouped by (model, strategy).
+
+    ``canonicalisers`` selects the matching criterion; see :func:`evaluate_note`.
+    """
     grouped: dict[tuple[str, str], dict[str, Any]] = {}
     for record in records:
         key = (str(record.get(MODEL_KEY, "")), str(record.get(STRATEGY_KEY, "")))
@@ -372,6 +461,7 @@ def evaluate_all(
             strategy=strategy,
             casefold=casefold,
             skip_invalid=skip_invalid,
+            canonicalisers=canonicalisers,
         )
         for (model, strategy), preds in grouped.items()
     }
