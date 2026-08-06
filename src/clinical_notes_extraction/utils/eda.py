@@ -79,17 +79,21 @@ _EMPTY_VALUES = {"", "na", "n/a", "none", "nan", "null", "unknown"}
 
 
 def clean_note(text) -> str | None:
-    """Clean a single note: remove noise/garbage lines and normalize spacing.
+    """ 
+    Cleans a single text note and returns the processed version, or `None` if the result is not usable.
 
-    Returns None when the input is not a string (NaN, numbers, None) or when
-    the cleaned result is empty or equals 'na' (case-insensitive).
-
-    Args:
-        text: Raw note text (any type — non-strings are handled gracefully).
-
-    Returns:
-        Cleaned note string, or None if the note is invalid or empty.
+    1. Returns `None` if the input is not a `str` (NaN, numbers, `None`).
+    2. Normalizes line endings (`\r\n` and `\r` → `\n`).
+    3. Strips whitespace from each line.
+    4. Removes lines made up **only** of noise characters — `. - / X ? n _`
+    (case-insensitive).
+    5. Collapses runs of spaces/tabs, caps paragraph breaks at a single blank
+    line, and strips the result.
+    6. Returns `None` if the result is empty or matches a null-equivalent
+    sentinel (`""`, `na`, `n/a`, `none`, `nan`, `null`, `unknown`);
+    otherwise returns the cleaned text.
     """
+
     # 1. Fail-safe for non-string inputs (NaN, numbers, None, etc.)
     if not isinstance(text, str):
         return None
@@ -118,18 +122,20 @@ def clean_note(text) -> str | None:
 
 
 def clean_and_drop_na_values(df: pd.DataFrame, column: str) -> pd.DataFrame:
-    """Add a '<column>_cleaned' column and drop rows where the note is invalid.
+    """
+    Applies `clean_note` to an entire DataFrame column.
 
-    Works on a copy of the DataFrame to avoid mutating the caller's object
-    and to avoid SettingWithCopyWarning when df is a slice.
+    - Creates a `<column>_cleaned` column with the cleaning result.
+    - Drops rows where the cleaned note is `None`.
+    - Returns a **copy** of the DataFrame; the caller's object is not mutated.
 
-    Args:
-        df: DataFrame containing the column to clean.
-        column: Name of the column to apply clean_note() to.
-
-    Returns:
-        Copy of the DataFrame with a new '<column>_cleaned' column,
-        with rows dropped where the cleaned note is None.
+    **Notes**
+    - The noise pattern **includes** `_`, so lines consisting only of MIMIC-IV
+    de-identification markers (`___`) are removed. Markers embedded inside a
+    line of real content are preserved — a redacted dose must remain visible
+    to the model as missing information, not be silently deleted.
+    - The regex patterns are compiled once at module level, since the function
+    is applied across the full set of discharge notes.
     """
     df = df.copy()
     new_col = f"{column}_cleaned"

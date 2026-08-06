@@ -3,7 +3,7 @@ import re
 import pandas as pd
 
 
-def extract_section(text: str, header: str) -> str | None:
+def _extract_section(text: str, header: str) -> str | None:
     """Return the body of one section from a single note, or None if absent.
 
     Args:
@@ -41,10 +41,10 @@ def add_medication_columns(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
 
     out["meds_on_admission"] = out["text"].apply(
-        lambda note: extract_section(note, "Medications on Admission")
+        lambda note: _extract_section(note, "Medications on Admission")
     )
     out["meds_on_discharge"] = out["text"].apply(
-        lambda note: extract_section(note, "Discharge Medications")
+        lambda note: _extract_section(note, "Discharge Medications")
     )
 
     # Coverage: fraction of notes where each section was found
