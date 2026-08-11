@@ -1,7 +1,7 @@
 # Project-specific: snsitive data & outputs
 
 # Data 
-data/
+data*
 config/
 reports/
 .secrets/

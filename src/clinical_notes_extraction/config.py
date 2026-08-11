@@ -16,9 +16,9 @@ QUERY_FILE_NAME = "discharge_notes.sql"
 
 ## LLM candidate models
 CANDIDATE_MODELS = {
-    "medgemma:27b": 19.0,     # ~17 GB weights + overhead 
-    "llama3.1:70b": 42.0,     # ~40 GB weights + overhead
-    "deepseek-r1:70b": 43.0,  # ~43 GB weights + overhead
+    "medgemma:27b": 20.0,
+    "gemma3:27b":   20.0,
+    "llama4:scout": 71.0,
 }
 
 

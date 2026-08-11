@@ -18,6 +18,7 @@ dependencies = [
     "python-docx>=1.2.0",
     "seaborn>=0.13.2",
     "sentence-transformers>=5.6.0",
+    "torch==2.12.1",
     "tqdm>=4.67.3",
 ]
 
@@ -32,3 +33,11 @@ build-backend = "uv_build"
 dev = [
     "nbstripout>=0.9.1",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
