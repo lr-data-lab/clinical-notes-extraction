@@ -95,6 +95,7 @@ class ExtractionRunner:
     # writing to the same folder. Pass an earlier date to resume that run.
     run_date: str = field(default_factory=lambda: date.today().isoformat())
     debug_prompt: bool = False
+    save_prompts: bool = False
 
     def __post_init__(self) -> None:
         """Fail at construction, not on the first note of a multi-hour grid.
@@ -161,7 +162,7 @@ class ExtractionRunner:
         )
 
     def prompt_path(self, note_id: str) -> Path:
-        """Path for the dumped prompt of one cell, when debug_prompt is on."""
+        """Path for the dumped prompt of one cell, when save_prompts is on."""        
         return (
             self.results_dir
             / self.safe_model
@@ -360,7 +361,8 @@ class ExtractionRunner:
                 return json.loads(cached.read_text(encoding="utf-8"))
 
         prompt = self.build_prompt(note_id, note_text, examples)
-        if self.debug_prompt:
+
+        if self.save_prompts:            
             dump_path = self.prompt_path(note_id)
             dump_path.parent.mkdir(parents=True, exist_ok=True)
             dump_path.write_text(prompt, encoding="utf-8")
