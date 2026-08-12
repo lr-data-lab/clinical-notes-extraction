@@ -20,7 +20,7 @@ Every medication found in the section becomes one entry in the `medications` arr
 
 ## Rules
 
-- Use `null` when a value is not stated in the text — never `""`, never `"N/A"`, including for free-text fields such as `administration_instructions` and `notes`.
+- Use `null` when a value is not stated in the text — never `""`, never `"N/A"`, including for free-text fields such as `administration_instructions`.
 - Do not invent values. Only fill a field if the information is written in the note.
 - Keep every extracted string exactly as it appears in the source (same casing, punctuation and spacing) so spans can be aligned to character offsets.
 

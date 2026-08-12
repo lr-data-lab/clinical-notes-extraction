@@ -10,14 +10,12 @@
                 "commercial_name": null,
                 "dosage_form": null,
                 "dose": null,
-                "dose_unit": null,
                 "quantity": null,
                 "route": null,
                 "frequency": null,
                 "duration": null,
                 "indication": [],
-                "administration_instructions": null,
-                "notes": null
+                "administration_instructions": null
             }
         }
     ]
@@ -26,34 +24,44 @@
 
 ### Structural rules
 
-- The template above defines the required keys and nesting. The values are placeholders: replace each one with the extracted value, keeping `null` where the note does not state one.
+- The template above defines the required keys and nesting. Both the values **and the number of objects** are placeholders: replace each value with the extracted one, and emit one object per medication found — however many that is, not the single one shown.
 - Return exactly these three top-level keys: `medications_text`, `flag_is_medication_completed` and `medications`. Do not add any other key.
-- Each medication is an object with exactly two keys: `span_text` and `attributes`. The twelve attribute fields live **inside** the `attributes` object — never at the medication's top level.
-- All twelve attribute keys must be present in every medication, using `null` when the value is not stated. Do not omit keys.
-- Do not invent keys. Any key not listed above will be rejected.
+- Each medication is an object with exactly two keys: `span_text` and `attributes`.
+- The attribute fields live **inside** the `attributes` object — never at the medication's top level. They are exactly these, in this order: `active_substance`, `commercial_name`, `dosage_form`, `dose`, `quantity`, `route`, `frequency`, `duration`, `indication`, `administration_instructions`.
+- All ten attribute keys must be present in every medication. Do not omit keys, and do not invent keys: any key not listed above will be rejected.
 
 Types:
 
-- `medications_text`, `span_text` and all attributes except `indication`: string or `null`
+- `medications_text` and all attributes except `indication`: string or `null`
+- `span_text`: string — always present, never `null`
 - `flag_is_medication_completed`: the JSON literal `true`, `false` or `null` — never a string
 - `indication`: array of strings, `[]` when no indication is stated — even for a single value: `["pain"]`, not `"pain"`
 - `medications`: array of objects, `[]` when the section lists no medications
 
 ### Field definitions
 
-- **medications_text**: The full text of the "Medications on Admission" section, copied verbatim from the note (no corrections, no reformatting). Null if the section is absent.
-- **flag_is_medication_completed**: Whether the medication list appears complete. Set to false if the note explicitly indicates the list is incomplete or unreliable (e.g., "unable to verify", "Preadmissions medications listed are incomplete"). Set to true if the note explicitly indicates the list is complete (e.g., "The Preadmission Medication list is accurate and complete."). Null if there is no such indication or it cannot be determined.
-- **medications**: A list with one object per distinct medication mention found in the "Medications on Admission" section. Empty list if the section states no medications (e.g., "None").
-- **span_text**: The exact medication mention as it appears in the note, copied verbatim character by character (no expansion of abbreviations, no spelling or capitalization changes). Null only if no span can be identified.
-- **active_substance**: The generic or chemical name of the drug (e.g., "metoprolol", "atorvastatin"), exactly as written in the note. Null if only a commercial name is mentioned.
-- **commercial_name**: The brand or trade name of the drug (e.g., "Lopressor", "Lipitor"), exactly as written in the note. Null if only the generic name is mentioned.
-- **dosage_form**: The physical form of the medication (e.g., "tablet", "capsule", "cream", "solution", "ODT"), exactly as written in the note. Do not confuse with route, which describes the path by which the drug enters the body: PO, IV, SC, IM, PR, SL and TP are routes and never belong here. Null if not stated. Release modifiers (ER, XR, XL, SR, CR, LA, Extended-Release, Sustained-Release) are part of the dosage form and belong here, annotated exactly as written (Diltiazem Extended-Release 120 mg PO DAILY → dosage_form "Extended-Release"). Exception: when the modifier is part of a registered brand name, it stays inside commercial_name and is not repeated here (Toprol XL 50 mg → commercial_name "Toprol XL", dosage_form null).
-- **dose**: The amount of drug expressed in mass or volume. Annotate exactly as written. Its meaning depends on quantity: when quantity is null, dose is the amount administered at one time (Amiodarone 100 mg PO DAILY → 100); when quantity is populated, dose is the strength contained in each unit, and the amount administered is the product of the two (Fluticasone Propionate 110mcg 2 PUFF → 110). Never include count units, units, route, or frequency. Null if no mass, volume (Albuterol Inhaler 2 PUFF IH Q6H:PRN sob → null) or if dose is like "__" ('Vitamin D "___" UNIT PO DAILY' -> "dose": null).
-- **dose_unit**: The concentration units (mg, g, mcg, mEq, mL, %, mg/mL, ...) of drug. E.g. Amiodarone 100 mg PO DAILY -> mg . Null if no mass, volume or concentration is stated (Albuterol Inhaler 2 PUFF IH Q6H:PRN sob → null).
-- **quantity**: The number of discrete units administered at one time, expressed in count units — PUFF, DROP, TAB, CAP, SPRAY, PATCH, SUPP. Annotate the number together with its unit, exactly as written (2 PUFF, 1 DROP, 1 TAB), preserving the source's capitalisation. Do not infer a count when none is stated: a line giving only a mass (Amiodarone 100 mg) has quantity null, even though it is implicitly one tablet. Never include frequency information.
-- **route**: The route of administration — the path by which the drug enters the body. Annotate the abbreviation exactly as it appears in the source text. Do not confuse with dosage_form, which describes the physical presentation of the drug (tablet, capsule, solution, patch). A single line may carry both (Ondansetron 4 mg IV ODT → route IV, dosage form ODT). Null when no route is stated.
-- **frequency**: The frequency and schedule of administration (e.g., "PO Daily", "BID", "PRN", "at bedtime"), exactly as written in the note, without the dose amount. Null if not stated.
-- **duration**: The length of the treatment period (e.g., "for 7 days", "x 2 weeks"), exactly as written in the note. Null if not stated.
-- **indication**: The clinical reason or triggering condition for administering the drug — the "why". Most commonly found after a PRN marker, following the colon separator where present (Q6H:PRN pain → pain). Annotate the span literally, preserving severity qualifiers as written (Pain - Mild, not pain); normalisation is a downstream task. Do not include the PRN marker itself, which belongs to frequency. Always an array of strings, with one element per distinct reason stated. Empty array [] when no indication is stated
-- **administration_instructions**: Free-text directions governing how or under what conditions the drug is given, which do not fit any other attribute. Includes hold parameters (hold for sbp<100, hold if HR<60), intake conditions (take with food, on an empty stomach, do not crush), titration or adjustment rules (titrate to effect, per sliding scale), and application sites (to affected area, both eyes). Distinct from indication: an indication triggers administration, an instruction constrains it. Null when no such text is present.
-- **notes**: Free-text comment attached to the medication line that describes the circumstances or condition of the prescription rather than a property of the drug itself. Captures only text that no other attribute claims: rationale for the therapeutic choice (including its relation to other medications), temporal framing of the prescription within the clinical episode, and indication that the source text is incomplete, truncated, or redacted. Annotated verbatim, without normalizing or expanding abbreviations; does not duplicate content already annotated in another attribute. null when absent.
+These three rules apply to every field below and are not repeated in each one:
+
+1. **Verbatim.** Every extracted value is a contiguous substring of the note, copied character by character — same digits, spacing, capitalisation and abbreviations. No conversion, expansion or reformatting.
+2. **Null.** A field is `null` whenever the note does not state it (`[]` for `indication`). Only non-obvious null cases are noted below.
+3. **`dosage_form` vs `route`.** Dosage form is the physical presentation of the drug; route is the path into the body. `PO`, `IV`, `SC`, `IM`, `PR`, `SL`, `TP` and `Ophth.` are routes and never dosage forms. One line may carry both, in either order: `Ondansetron ODT 4 mg PO Q8H` → dosage_form `ODT`, route `PO`; `Latanoprost 0.005% Ophth. Soln.` → route `Ophth.`, dosage_form `Soln.`
+
+Top level:
+
+- **medications_text** — the whole "Medications on Admission" section.
+- **flag_is_medication_completed** — `false` if the note says the list is incomplete or unreliable ("unable to verify"); `true` if it says the list is complete ("The Preadmission Medication list is accurate and complete."); `null` if it says neither.
+- **medications** — one object per medication mention; `[]` if the section lists none ("None"). One source line describing one drug stays one object even with two regimens (e.g. a morning and an evening dose): keep the full expression in `dose` and `frequency` instead of splitting.
+- **span_text** — the medication mention. Keep leading list numbering (`1. Aspirin 81 mg PO DAILY`). Exclude trailing parenthetical context that maps to no attribute (`(last dose charted at 1600 ___)`).
+
+Attributes:
+
+- **active_substance** — generic or chemical name. Never derived from a brand: `Prilosec OTC` → `null`. A component spelled out inside a descriptive product name belongs here: `artificial Tear with Lanolin` → `Lanolin`.
+- **commercial_name** — brand or trade name, including descriptive OTC product names (`artificial Tear with Lanolin`).
+- **dosage_form** — tablet, capsule, cream, `Soln.`, `ODT`. Also infusion modes (`drip`, `gtt`, `infusion`) and release modifiers (`ER`, `XR`, `XL`, `SR`, `CR`, `LA`, `Extended-Release`, `Sustained-Release`): `Diltiazem Extended-Release 120 mg` → `Extended-Release`. Exception: a modifier belonging to a registered brand stays in `commercial_name` and is not repeated here — `Toprol XL 50 mg` → commercial_name `Toprol XL`, dosage_form `null`.
+- **dose** — mass, volume or concentration with its unit. Meaning depends on `quantity`: when `quantity` is `null`, the amount given at one time (`Amiodarone 100 mg PO DAILY` → `100 mg`); when `quantity` is filled, the strength per unit (`Fluticasone Propionate 110mcg 2 PUFF` → `110mcg`). Combination and multiphasic products keep the whole expression, per-phase counts included: `0.15 mg-30 mcg (84)/10 mcg (7)`, `250-100 mg-unit`. Infusion rates are kept whole with their time denominator (`10 mcg/hr`, `250 mL/hr`) — the exclusion of frequency refers to schedule markers (`BID`, `Q8H`), not to rate denominators. Never count units, route or schedule. Null when no mass, volume or concentration is stated (`Albuterol Inhaler 2 PUFF IH` → `null`) and when the number is redacted even if the unit shows (`Vitamin D "___" UNIT` → `null`).
+- **quantity** — number of discrete units given at one time, with its count unit: `2 PUFF`, `1 DROP`, `1 TAB` (also `CAP`, `SPRAY`, `PATCH`, `SUPP`). Never inferred: `Amiodarone 100 mg` → `null`, even though it is implicitly one tablet. Never carries frequency.
+- **route** — the abbreviation as written.
+- **frequency** — the schedule only: `DAILY`, `BID`, `Q6H:PRN`, `at bedtime`. Carries neither the dose nor the route — in `100 mg PO DAILY` the frequency is `DAILY`, not `PO DAILY`.
+- **duration** — length of treatment (`for 7 days`, `x 2 weeks`), without the `Duration:` label where the source uses one.
+- **indication** — the reason or triggering condition for giving the drug. Usually after a PRN marker, past the colon where present (`Q6H:PRN pain` → `pain`). Keep severity qualifiers as written (`Pain - Mild`, not `pain`); normalisation is a downstream task. Excludes the PRN marker itself, which is frequency. One array element per distinct reason.
+- **administration_instructions** — free-text directions constraining how or under what conditions the drug is given: hold parameters (`hold for sbp<100`), intake conditions (`take with food`, `do not crush`), titration rules (`titrate to effect`, `per sliding scale`), application sites (`to affected area`, `both eyes`). An indication triggers administration; an instruction constrains it.
