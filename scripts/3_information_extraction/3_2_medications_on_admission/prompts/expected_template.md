@@ -74,7 +74,7 @@ Attributes:
   "Toprol XL 50mg daily"  -> active_substance: null, commercial_name: "Toprol XL"
   "Lisinopril 10mg daily" -> active_substance: "Lisinopril", commercial_name: null
 
-- **commercial_name**: brand or trade name, including descriptive OTC product names (`artificial Tear with Lanolin`). Enclosing brackets are delimiters, not part of the name (rule 1).
+- **commercial_name**: brand or trade name, including descriptive OTC product names (`artificial Tear with Lanolin`). Enclosing brackets are delimiters, not part of the name (rule 1). Null if only the active substance is mentioned.
 
 - **dosage_form**: tablet, capsule, cream, `Soln.`, `ODT`. Also infusion modes (`drip`, `gtt`, `infusion`) and release modifiers (`ER`, `XR`, `XL`, `SR`, `CR`, `LA`, `Extended-Release`, `Sustained-Release`, `Immediate Release`): `Diltiazem Extended-Release 120 mg` → `Extended-Release`. Enclosing parentheses are delimiters and are stripped (rule 1). Exception: a modifier belonging to a registered brand stays in `commercial_name` and is not repeated here — `Toprol XL 50 mg` → commercial_name `Toprol XL`, dosage_form `null`.
 
@@ -82,12 +82,12 @@ Attributes:
 
 - **quantity**: number of discrete units given at one time, with its count unit: `2 PUFF`, `1 DROP`, `1 TAB` (also `CAP`, `SPRAY`, `PATCH`, `SUPP`). Never inferred: `Amiodarone 100 mg` → `null`, even though it is implicitly one tablet. Never carries frequency. . When the number is redacted but the unit shows, must extract the unit (`"___" PUFF` → `PUFF`). Always a number followed by a count unit. Free text is never a quantity: a phrase such as Dose is Unknown is a statement about the dose, not a count, and leaves both dose and quantity null.
 
-- **route**: the abbreviation as written.
+- **route**: The route of administration — the path by which the drug enters the body. Annotate the abbreviation exactly as it appears in the source text. Do not confuse with dosage_form, which describes the physical presentation of the drug (tablet, capsule, solution, patch). A single line may carry both (Ondansetron 4 mg IV ODT → route IV, dosage form ODT). Null when no route is stated.
 
-- **frequency**: the schedule only: `DAILY`, `BID`, `Q6H:PRN`, `at bedtime`. Carries neither the dose nor the route — in `100 mg PO DAILY` the frequency is `DAILY`, not `PO DAILY`.
+- **frequency**: The frequency and schedule of administration (e.g., "PO Daily", "BID", "PRN", "at bedtime"), exactly as written in the note, without the dose amount. Null if not stated.
 
-- **duration**: length of treatment (`for 7 days`, `x 2 weeks`), without the `Duration:` label where the source uses one (rule 1).
+- **duration**: The length of the treatment period (e.g., "for 7 days", "x 2 weeks"), exactly as written in the note. Null if not stated.
 
-- **indication**: the reason or triggering condition for giving the drug. Usually after a PRN marker, past the colon where present (`Q6H:PRN pain` → `pain`). Keep severity qualifiers as written (`Pain - Mild`, not `pain`); normalisation is a downstream task. Excludes the PRN marker itself, which is frequency. One array element per distinct reason.
+- **indication**: The clinical reason or triggering condition for administering the drug — the "why". Most commonly found after a PRN marker, following the colon separator where present (Q6H:PRN pain → pain). Annotate the span literally, preserving severity qualifiers as written (Pain - Mild, not pain); normalisation is a downstream task. Do not include the PRN marker itself, which belongs to frequency. Always an array of strings, with one element per distinct reason stated. Empty array [] when no indication is stated
 
 - **administration_instructions**: free-text directions constraining how or under what conditions the drug is given: hold parameters (`hold for sbp<100`), intake conditions (`take with food`, `do not crush`), titration rules (`titrate to effect`, `per sliding scale`), application sites (`to affected area`, `both eyes`). An indication triggers administration; an instruction constrains it. Exclude trailing parenthetical context that maps to no attribute (`(last dose charted at 1600 ___)`).
