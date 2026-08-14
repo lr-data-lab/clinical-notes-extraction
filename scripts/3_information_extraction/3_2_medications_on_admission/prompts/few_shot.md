@@ -25,6 +25,25 @@ Every medication found in the section becomes one entry in the `medications` arr
 
 - Use `null` when a value is not stated in the text — never `""`, never `"N/A"`, including for free-text fields such as `administration_instructions`.
 - Do not invent values. Only fill a field if the information is written in the note.
+- **Never infer, complete or normalise a value.** With the single exception of
+  `flag_is_medication_completed`, every field must be copied from text that is
+  explicitly present in the note. If the information is not written there, the
+  value is `null` — even when the correct value is obvious from medical knowledge.
+  In particular:
+  - Do not derive an active substance from a brand name, or a brand name from a
+    substance (e.g. "Prilosec OTC" → `commercial_name` only, `active_substance` `null`).
+  - Do not expand abbreviations, correct spelling, or normalise casing.
+  - Do not infer `route` from the dosage form, or `dosage_form` from the route.
+  - Do not infer `indication` from what the drug is typically prescribed for; it is
+    filled only when the note states the reason for that specific medication.
+  - Do not supply a customary `dose`, `quantity`, `frequency` or `duration` because
+    it is the standard regimen for that drug.
+  - Do not resolve ambiguous or redacted text (`___`, unexplained marks) into a
+    guessed value.
+- `flag_is_medication_completed` is the only field that is a judgement about the note
+  rather than an extraction from it. Set it to `true` or `false` only when the note
+  explicitly states that the admission medication list is complete or incomplete, and
+  `null` when there is no such statement or it cannot be determined.
 - Keep every extracted string exactly as it appears in the source (same casing, punctuation and spacing) so spans can be aligned to character offsets.
 
 

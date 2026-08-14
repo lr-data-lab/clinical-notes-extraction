@@ -70,19 +70,31 @@ Top level:
 
 Attributes:
 
-- **active_substance**: the generic/chemical name as written in the source text. If the entry names only a brand, leave null — do not supply the generic from pharmacological knowledge.
-  "Toprol XL 50mg daily"  -> active_substance: null, commercial_name: "Toprol XL"
-  "Lisinopril 10mg daily" -> active_substance: "Lisinopril", commercial_name: null
+- **active_substance**: the chemical name or generic name in the source text. If the entry names only a brand, leave null — do not supply the chemical name or generic name from pharmacological knowledge. If there are 2 active substance extract both e.g. `Latanoprost 0.005% / Timolol 0.5%` -> `Latanoprost / Timolol`
 
-- **commercial_name**: brand or trade name, including descriptive OTC product names (`artificial Tear with Lanolin`). Enclosing brackets are delimiters, not part of the name (rule 1). Null if only the active substance is mentioned.
+- **commercial_name**: brand or trade name, including descriptive OTC product names (`artificial Tear with Lanolin`). Enclosing brackets are delimiters, not part of the name (rule 1). Null if only the active substance is mentioned. Strip the outermost delimiters and any introducing label; keep everything inside, e.g. `DONEPEZIL [ARICEPT]` → commercial_name `ARICEPT`, not `[ARICEPT]`.
 
-- **dosage_form**: tablet, capsule, cream, `Soln.`, `ODT`. Also infusion modes (`drip`, `gtt`, `infusion`) and release modifiers (`ER`, `XR`, `XL`, `SR`, `CR`, `LA`, `Extended-Release`, `Sustained-Release`, `Immediate Release`): `Diltiazem Extended-Release 120 mg` → `Extended-Release`. Enclosing parentheses are delimiters and are stripped (rule 1). Exception: a modifier belonging to a registered brand stays in `commercial_name` and is not repeated here — `Toprol XL 50 mg` → commercial_name `Toprol XL`, dosage_form `null`.
+- **dosage_form**: tablet, capsule, cream, `Soln.`, `ODT`. Also infusion modes (`drip`, `gtt`, `infusion`) and release modifiers (`ER`, `XR`, `XL`, `SR`, `CR`, `LA`, `Extended-Release`, `Sustained-Release`, `Immediate Release`): `Diltiazem Extended-Release 120 mg` → `Extended-Release`. Enclosing parentheses are delimiters and are stripped (rule 1). Exception: a modifier belonging to a registered brand stays in `commercial_name` and is not repeated here, dosage_form `null`.
 
-- **dose**: mass, volume or concentration with its unit. An explicit statement that the dose is unknown or unverified is null, however phrased — Dosage uncertain, Dose is Unknown, dose unclear. Meaning depends on `quantity`: when `quantity` is `null`, the amount given at one time (`Amiodarone 100 mg PO DAILY` → `100 mg`); when `quantity` is filled, the strength per unit (`Fluticasone Propionate 110mcg 2 PUFF` → `110mcg`). Combination and multiphasic products keep the whole expression, per-phase counts included: `0.15 mg-30 mcg (84)/10 mcg (7)`, `250-100 mg-unit`. Infusion rates are kept whole with their time denominator (`10 mcg/hr`, `250 mL/hr`) — the exclusion of frequency refers to schedule markers (`BID`, `Q8H`), not to rate denominators. Never count units, route or schedule. When the number is redacted but the unit shows, must extract the unit (`Vitamin D "___" UNIT` → `UNIT`).
+- **dose**: mass, volume or concentration with its unit. An explicit statement that the dose is unknown or unverified is null, however phrased — Dosage uncertain, Dose is Unknown, dose unclear. Meaning depends on `quantity`: when `quantity` is `null`, the amount given at one time (`Amiodarone 100 mg PO DAILY` → `100 mg`); when `quantity` is filled, the strength per unit (`Fluticasone Propionate 110mcg 2 PUFF` → `110mcg`). Combination and multiphasic products keep the whole expression, per-phase counts included: `0.15 mg-30 mcg (84)/10 mcg (7)`, `250-100 mg-unit`. Infusion rates are kept whole with their time denominator (`10 mcg/hr`, `250 mL/hr`) — the exclusion of frequency refers to schedule markers (`BID`, `Q8H`), not to rate denominators. Never count units, route or schedule. Redacted number → null. Remove the brackets.
 
-- **quantity**: number of discrete units given at one time, with its count unit: `2 PUFF`, `1 DROP`, `1 TAB` (also `CAP`, `SPRAY`, `PATCH`, `SUPP`). Never inferred: `Amiodarone 100 mg` → `null`, even though it is implicitly one tablet. Never carries frequency. . When the number is redacted but the unit shows, must extract the unit (`"___" PUFF` → `PUFF`). Always a number followed by a count unit. Free text is never a quantity: a phrase such as Dose is Unknown is a statement about the dose, not a count, and leaves both dose and quantity null.
+- **quantity**: how many discrete units are administered at one time, written
+  as a number followed by a count unit: `2 PUFF`, `1 DROP`, `1 TAB` (also
+  `CAP`, `SPRAY`, `PATCH`, `SUPP`, `LOZENGE`). Never anything else.
 
-- **route**: The route of administration — the path by which the drug enters the body. Annotate the abbreviation exactly as it appears in the source text. Do not confuse with dosage_form, which describes the physical presentation of the drug (tablet, capsule, solution, patch). A single line may carry both (Ondansetron 4 mg IV ODT → route IV, dosage form ODT). Null when no route is stated.
+  - Never inferred: `Amiodarone 100 mg` → null, even though one tablet is implied.
+  - Count units only. Units of biological potency measure strength, not
+    countable forms, and belong to `dose`: `Humalog 20 Units` → dose `20 Units`,
+    quantity null. Same for `UNIT`, `mEq`, `mcg`, `mg`, `mL`.
+  - Redacted number → null.
+    A bare unit with no number is not a quantity.
+  - Never carries the schedule: `2 PUFF QID` → quantity `2 PUFF`, frequency `QID`.
+  - Never free text: `Dose is Unknown` is a statement about the dose, not a
+    count, and leaves both `dose` and `quantity` null.
+  - When `quantity` is filled, `dose` holds the strength per unit:
+    `Fluticasone Propionate 110mcg 2 PUFF` → dose `110mcg`, quantity `2 PUFF`.
+    
+- **route**: The route of administration — the path by which the drug enters the body (e.g. `topical`, `oral`). Annotate the abbreviation exactly as it appears in the source text. Do not confuse with dosage_form, which describes the physical presentation of the drug (tablet, capsule, solution, patch). A single line may carry both (Ondansetron 4 mg IV ODT → route IV, dosage form ODT). Null when no route is stated.
 
 - **frequency**: The frequency and schedule of administration (e.g., "PO Daily", "BID", "PRN", "at bedtime"), exactly as written in the note, without the dose amount. Null if not stated.
 
@@ -90,4 +102,4 @@ Attributes:
 
 - **indication**: The clinical reason or triggering condition for administering the drug — the "why". Most commonly found after a PRN marker, following the colon separator where present (Q6H:PRN pain → pain). Annotate the span literally, preserving severity qualifiers as written (Pain - Mild, not pain); normalisation is a downstream task. Do not include the PRN marker itself, which belongs to frequency. Always an array of strings, with one element per distinct reason stated. Empty array [] when no indication is stated
 
-- **administration_instructions**: free-text directions constraining how or under what conditions the drug is given: hold parameters (`hold for sbp<100`), intake conditions (`take with food`, `do not crush`), titration rules (`titrate to effect`, `per sliding scale`), application sites (`to affected area`, `both eyes`). An indication triggers administration; an instruction constrains it. Exclude trailing parenthetical context that maps to no attribute (`(last dose charted at 1600 ___)`).
+- **administration_instructions**: free-text directions constraining how or under what conditions the drug is given: hold parameters (`hold for sbp<100`), intake conditions (`take with food`, `do not crush`), titration rules (`titrate to effect`, `sliding scale`), application sites (`to affected area`, `both eyes`). An indication triggers administration; an instruction constrains it. Exclude trailing parenthetical context that maps to no attribute (`(last dose charted at 1600 ___)`).
