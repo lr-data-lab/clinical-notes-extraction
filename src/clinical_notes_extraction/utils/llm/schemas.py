@@ -23,23 +23,24 @@ from pydantic import BaseModel, ConfigDict, StringConstraints
 
 # The template forbids "" and "N/A" placeholders: an absent value is null.
 # Empty or whitespace-only strings are therefore a violation, not a value.
+# span_text and attribute strings must be non-empty spans.
 Span = Annotated[str, StringConstraints(min_length=1, strip_whitespace=False)]
 
 
 class MedicationAttributes(BaseModel):
-    """Attribute spans for one medication. All values are literal spans (or null)."""
+    """Attribute spans for one medication. All values are literal spans (or null/empty list)."""
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
     active_substance: Span | None
     commercial_name: Span | None
     dosage_form: Span | None
-    dose: Span | None
+    dose: list[Span]  # Array of strings ([] when empty, never null)
     quantity: Span | None
     route: Span | None
-    frequency: Span | None
+    frequency: list[Span]  # Array of strings ([] when empty, never null)
     duration: Span | None
-    indication: list[Span]
+    indication: list[Span]  # Array of strings ([] when empty, never null)
     administration_instructions: Span | None
 
 
@@ -61,9 +62,9 @@ class ExtractionOutput(BaseModel):
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    medications_text: Span | None
-    flag_is_medication_completed: bool | None
-    medications: list[Medication]
+    medications_text: str | None  # String or null; permitted to contain multi-line text (\n)
+    flag_is_medication_completed: bool | None  # JSON literal true, false, or null
+    medications: list[Medication]  # List of extracted medication objects ([] when empty)
 
 
 class NoteId(BaseModel):

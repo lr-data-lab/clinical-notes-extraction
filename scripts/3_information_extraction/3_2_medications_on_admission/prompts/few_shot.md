@@ -14,9 +14,12 @@ The following examples show the expected output format. Follow their structure, 
 
 ## Expected output template
 
-Return a single valid JSON object matching the template below. Output only that object — no explanations, no surrounding text, and no markdown code fences (the fences below delimit the template and must not appear in your output).
+Return a single valid JSON object strictly matching the template and structure shown below. Output ONLY that JSON object, without any introductory text, markdown commentary, or post-extraction explanations.
 
-Every medication found in the section becomes one entry in the `medications` array of that single object. Never emit more than one top-level object, and never move attribute fields out of the `attributes` object.
+**Critical Formatting Guidelines:**
+- **Source Material:** Every extracted medication and attribute value in your response MUST come exclusively from the clinical note provided in `{NOTE_TEXT}` at the end of this prompt.
+- **Dynamic Extraction:** `medications_text` MUST contain the verbatim text of the admission medication section from `{NOTE_TEXT}`. **NEVER** copy `medications_text`, medication names, or attribute values from the demonstration examples. The examples illustrate structure ONLY, not content.
+- **Structural Integrity:** Every medication found in the section becomes one entry in the `medications` array of that single top-level object. Never emit more than one top-level JSON object, and never move attribute fields out of the nested `attributes` object.
 
 {EXPECTED_TEMPLATE}
 
@@ -45,6 +48,7 @@ Every medication found in the section becomes one entry in the `medications` arr
   explicitly states that the admission medication list is complete or incomplete, and
   `null` when there is no such statement or it cannot be determined.
 - Keep every extracted string exactly as it appears in the source (same casing, punctuation and spacing) so spans can be aligned to character offsets.
+- Replace any newline character (\n) inside extracted attribute values or `span_text` with a single space. Newline characters are permitted only in `medications_text`.
 
 
 ## Clinical note to be extracted

@@ -14,7 +14,7 @@ The following examples show the expected output format. Follow their structure, 
 
 ## Expected output template
 
-Return a single valid JSON object matching the template below. Output only that object — no explanations, no surrounding text, and no markdown code fences (the fences below delimit the template and must not appear in your output).
+Return a single valid JSON object matching the template below. Output only that object without any introductory text, explanations, or commentary.
 
 Every medication found in the section becomes one entry in the `medications` array of that single object. Never emit more than one top-level object, and never move attribute fields out of the `attributes` object.
 
@@ -45,6 +45,7 @@ Every medication found in the section becomes one entry in the `medications` arr
   explicitly states that the admission medication list is complete or incomplete, and
   `null` when there is no such statement or it cannot be determined.
 - Keep every extracted string exactly as it appears in the source (same casing, punctuation and spacing) so spans can be aligned to character offsets.
+- Replace any newline character (\n) inside extracted attribute values or `span_text` with a single space. Newline characters are permitted only in `medications_text`.
 
 
 ## Clinical note to be extracted
