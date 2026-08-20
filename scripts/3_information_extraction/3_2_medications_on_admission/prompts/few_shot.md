@@ -44,9 +44,7 @@ Return a single valid JSON object strictly matching the template and structure s
   - Do not resolve ambiguous or redacted text (`___`, unexplained marks) into a
     guessed value.
 - `flag_is_medication_completed` is the only field that is a judgement about the note
-  rather than an extraction from it. Set it to `true` or `false` only when the note
-  explicitly states that the admission medication list is complete or incomplete, and
-  `null` when there is no such statement or it cannot be determined.
+  rather than an extraction from it. MUST be JSON boolean (true / false / null) — never a string. DO NOT USE QUOTES: write true, NOT "true".
 - Keep every extracted string exactly as it appears in the source (same casing, punctuation and spacing) so spans can be aligned to character offsets.
 - Replace any newline character (\n) inside extracted attribute values or `span_text` with a single space. Newline characters are permitted only in `medications_text`.
 

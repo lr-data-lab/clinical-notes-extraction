@@ -28,7 +28,7 @@ DataFrame straight from a list of records):
 - output   -- the Pydantic-validated dict; THE ONLY FIELD THE EVALUATION READS.
 - raw      -- the model's message content before cleaning and parsing.
 - response -- the rest of the Ollama payload, verbatim minus the message.
-- usage    -- token counts, latency and the context-overflow flag.
+- usage    -- token counts, latency and the two truncation flags.
 - error    -- failure message, None on success.
 
 Failure policy (mirrored by the run notebook):
@@ -37,6 +37,9 @@ Failure policy (mirrored by the run notebook):
 - Connection errors, timeouts and prompt-assembly bugs are RAISED, because
   they invalidate every remaining cell: failing loudly is the correct
   behaviour.
+
+Two distinct truncation failures are observable in `usage`, and they need
+opposite fixes -- see `usage_from` for how to tell them apart.
 """
 
 import json
@@ -74,6 +77,10 @@ NANOSECONDS_PER_SECOND = 1e9
 # much larger read budget that generation needs.
 CONNECT_TIMEOUT_SECONDS = 10
 
+# Rough chars-per-token ratio, used only by the pre-flight prompt-size guard.
+# Deliberately pessimistic: English clinical prose runs closer to 4.
+CHARS_PER_TOKEN_ESTIMATE = 3.5
+
 
 # `eq=False` keeps the instance unhashable-by-value: `ollama_config` is a dict,
 # so the __hash__ generated for a frozen dataclass would raise on any hash().
@@ -100,24 +107,38 @@ class ExtractionRunner:
     def __post_init__(self) -> None:
         """Fail at construction, not on the first note of a multi-hour grid.
 
-        The three required options are the ones whose absence corrupts the
+        The four required options are the ones whose absence corrupts the
         experiment rather than crashing it:
         - num_ctx: Ollama defaults to 2048-4096 and silently truncates the
           START of the prompt on overflow, dropping role and expected_template.
           The run completes, the scores are bad, and nothing explains why.
+        - num_predict: without a generation cap, a degenerate repetition loop
+          runs until the whole context window is filled. Observed cost of one
+          such note: ~31k tokens and 19 minutes, for a record that ends up
+          `invalid` anyway. The cap does not prevent the loop, it bounds it.
         - temperature: any value above 0 turns strategy comparison into a
           measurement of sampling noise.
         - seed: greedy decoding alone does not guarantee reproducibility, and
-          an unreproducible run cannot be defended.
+          an unreproducible run cannot be defended. (Inert at temperature 0,
+          but required so the run stays reproducible if temperature ever moves.)
         """
         missing = {"url", "options", "timeout_seconds"} - self.ollama_config.keys()
         if missing:
             raise ValueError(f"ollama_config missing keys: {sorted(missing)}")
 
-        missing_options = {"num_ctx", "temperature", "seed"} - self.ollama_config["options"].keys()
+        required_options = {"num_ctx", "num_predict", "temperature", "seed"}
+
+        missing_options = required_options - self.ollama_config["options"].keys()
         if missing_options:
             raise ValueError(
                 f"ollama_config['options'] missing keys: {sorted(missing_options)}"
+            )
+
+        # A generation cap that does not fit inside the window is not a cap.
+        if self.num_predict >= self.num_ctx:
+            raise ValueError(
+                f"num_predict ({self.num_predict}) must be smaller than "
+                f"num_ctx ({self.num_ctx}); nothing would be left for the prompt"
             )
 
     @property
@@ -138,6 +159,11 @@ class ExtractionRunner:
     def num_ctx(self) -> int:
         """Context window, guaranteed present by __post_init__."""
         return self.ollama_config["options"]["num_ctx"]
+
+    @property
+    def num_predict(self) -> int:
+        """Generation cap, guaranteed present by __post_init__."""
+        return self.ollama_config["options"]["num_predict"]
 
     # ------------------------------------------------------------------
     # Paths
@@ -162,7 +188,7 @@ class ExtractionRunner:
         )
 
     def prompt_path(self, note_id: str) -> Path:
-        """Path for the dumped prompt of one cell, when save_prompts is on."""        
+        """Path for the dumped prompt of one cell, when save_prompts is on."""
         return (
             self.results_dir
             / self.safe_model
@@ -176,7 +202,14 @@ class ExtractionRunner:
     # ------------------------------------------------------------------
 
     def build_prompt(self, note_id: str, note_text: str, examples: str = "") -> str:
-        """Assemble the final prompt: fixed content first, note last."""
+        """Assemble the final prompt: fixed content first, note last.
+
+        Raises rather than returns on a prompt that cannot fit: on overflow
+        Ollama truncates the START of the prompt silently, which drops the role
+        and the expected template. The call would still succeed and the note
+        would still be scored -- against a model that never saw the schema.
+        Aborting is the correct behaviour, and matches the placeholder check.
+        """
         prompt = self.template.replace("{EXPECTED_TEMPLATE}", self.expected_template)
         prompt = prompt.replace("{EXAMPLES}", examples)
         prompt = prompt.replace("{NOTE_ID}", note_id)
@@ -185,6 +218,18 @@ class ExtractionRunner:
         leftover = re.findall(r"\{[A-Z_]+\}", prompt)
         if leftover:
             raise ValueError(f"Unreplaced placeholders in {self.strategy}: {leftover}")
+
+        # Char-based estimate: cheap, model-agnostic, and only needs to catch
+        # the order-of-magnitude case where the prompt cannot possibly fit.
+        estimated_tokens = int(
+            (len(self.role) + len(prompt)) / CHARS_PER_TOKEN_ESTIMATE
+        )
+        if estimated_tokens + self.num_predict > self.num_ctx:
+            raise ValueError(
+                f"Prompt too large for note {note_id} ({self.strategy}): "
+                f"~{estimated_tokens} prompt tokens + {self.num_predict} num_predict "
+                f"exceeds num_ctx {self.num_ctx}. Raise num_ctx or shorten the prompt."
+            )
         return prompt
 
     @staticmethod
@@ -253,15 +298,16 @@ class ExtractionRunner:
         """Single chat call, returning the FULL payload.
 
         The payload is returned rather than just the message content because
-        the counters it carries (prompt_eval_count, eval_count, durations) are
-        per-call telemetry that cannot be recovered afterwards: they feed the
-        cost table and the context-overflow check. Parsing stays the caller's
-        job so malformed output can still be persisted.
+        the counters it carries (prompt_eval_count, eval_count, done_reason,
+        durations) are per-call telemetry that cannot be recovered afterwards:
+        they feed the cost table and the two truncation flags. Parsing stays
+        the caller's job so malformed output can still be persisted.
 
-        - num_ctx (in options) must be set explicitly -- see __post_init__.
-        - 8192 covers prompt + note + example + output; KV-cache VRAM grows
-          linearly with it, and with num_ctx * OLLAMA_NUM_PARALLEL under
-          concurrency.
+        - num_ctx and num_predict (in options) must be set explicitly -- see
+          __post_init__. num_ctx is the shared budget for prompt AND
+          generation, so the usable output length is num_ctx - prompt tokens.
+        - KV-cache VRAM grows linearly with num_ctx, and with
+          num_ctx * OLLAMA_NUM_PARALLEL under concurrency.
         - On CUDA OOM, unloads and retries once: the shared GPU may just have
           been busy.
         """
@@ -314,23 +360,39 @@ class ExtractionRunner:
         return round(nanoseconds / NANOSECONDS_PER_SECOND, 3) if nanoseconds else None
 
     def usage_from(self, payload: dict) -> dict:
-        """Token counts and latency for one call.
+        """Token counts, latency and the two truncation flags for one call.
 
-        context_overflow flags the notes whose prompt plus completion filled
-        the window. It is a >= comparison because on overflow Ollama reports
-        the count AFTER truncation, so an exhausted window is the only visible
-        symptom of the silent prompt cut described in __post_init__.
+        Both flags mean "the answer was cut off", but they have opposite
+        causes and opposite fixes, so they are recorded separately:
+
+        - context_overflow: prompt plus completion filled the window. A >=
+          comparison because on overflow Ollama reports the count AFTER
+          truncation, so an exhausted window is the only visible symptom of
+          the silent prompt cut described in __post_init__. Fix: raise num_ctx.
+        - hit_generation_cap: the model stopped because it reached num_predict
+          rather than because it finished (done_reason == "length"). With
+          num_predict well below num_ctx this fires WITHOUT context_overflow,
+          which is exactly the degenerate-repetition-loop signature: a small
+          prompt, the cap hit, and a truncated JSON.
+
+        Read them together with prompt_tokens: the cap hit on a small prompt
+        is a loop (fix the decoding, not the window), the cap or the overflow
+        hit on a prompt near num_ctx is genuinely too much input.
         """
         prompt_tokens = payload.get("prompt_eval_count")
         completion_tokens = payload.get("eval_count")
         total_tokens = (prompt_tokens or 0) + (completion_tokens or 0)
         eval_seconds = self._seconds(payload.get("eval_duration"))
+        done_reason = payload.get("done_reason")
 
         return {
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "total_tokens": total_tokens,
             "num_ctx": self.num_ctx,
+            "num_predict": self.num_predict,
+            "done_reason": done_reason,
+            "hit_generation_cap": done_reason == "length",
             "context_overflow": total_tokens >= self.num_ctx,
             "total_duration_s": self._seconds(payload.get("total_duration")),
             "load_duration_s": self._seconds(payload.get("load_duration")),
@@ -362,7 +424,7 @@ class ExtractionRunner:
 
         prompt = self.build_prompt(note_id, note_text, examples)
 
-        if self.save_prompts:            
+        if self.save_prompts:
             dump_path = self.prompt_path(note_id)
             dump_path.parent.mkdir(parents=True, exist_ok=True)
             dump_path.write_text(prompt, encoding="utf-8")
@@ -398,7 +460,9 @@ class ExtractionRunner:
         except (json.JSONDecodeError, ValidationError) as err:
             # Model-side failure (recall = 0): the model answered but the
             # output is malformed or off-schema. Raw is kept -- only evidence
-            # of HOW the model failed, unrecoverable afterwards.
+            # of HOW the model failed, unrecoverable afterwards. A truncated
+            # answer lands here too; usage says whether it was the window
+            # (context_overflow) or the cap (hit_generation_cap).
             record["status"] = "invalid"
             record["error"] = str(err)
             target = err_path
