@@ -5,45 +5,40 @@ Extract all medications listed in the **"Medications on Admission"** section of 
 The note is a full discharge summary — locate the admission medication section yourself and ignore every other section, including "Discharge Medications".
 
 
-## Examples
+## Demonstrations
 
-The following examples show the expected output format. Follow their structure, not their content: the medications in your answer must come from the clinical note at the end of this prompt.
+The demonstration material below shows the expected output format. Follow its structure, not its content.
 
 {EXAMPLES}
+
+**The demonstration material above illustrates structure ONLY, never content:**
+
+- **Source Material:** Every extracted medication and attribute value in your response MUST come exclusively from the clinical note at the end of this prompt.
+- **Dynamic Extraction:** `medications_text` MUST contain the verbatim text of the admission medication section of that same clinical note. **NEVER** copy `medications_text`, medication names, or attribute values from the demonstration material above.
 
 
 ## Expected output template
 
-Return a single valid JSON object matching the template below. Output only that object without any introductory text, explanations, or commentary.
+Return a single valid JSON object strictly matching the template and structure shown below. Output ONLY that JSON object, without any introductory text, markdown commentary, or post-extraction explanations.
 
-Every medication found in the section becomes one entry in the `medications` array of that single object. Never emit more than one top-level object, and never move attribute fields out of the `attributes` object.
+Every medication found in the section becomes one entry in the `medications` array of that single top-level object. Never emit more than one top-level JSON object, and never move attribute fields out of the nested `attributes` object.
 
 {EXPECTED_TEMPLATE}
 
 
 ## Rules
 
-- Use `null` when a value is not stated in the text — never `""`, never `"N/A"`, including for free-text fields such as `administration_instructions`.
 - Do not invent values. Only fill a field if the information is written in the note.
-- **Never infer, complete or normalise a value.** With the single exception of
-  `flag_is_medication_completed`, every field must be copied from text that is
-  explicitly present in the note. If the information is not written there, the
-  value is `null` — even when the correct value is obvious from medical knowledge.
-  In particular:
-  - Do not derive an active substance from a brand name, or a brand name from a
-    substance (e.g. "Prilosec OTC" → `commercial_name` only, `active_substance` `null`).
+- **Never infer, complete or normalise a value.** With the single exception of `flag_is_medication_completed`, every field must be copied from text that is explicitly present in the note. If the information is not written there, the field is unstated — even when the correct value is obvious from medical knowledge. In particular:
+  - Do not derive an active substance from a brand name, or a brand name from a substance.
   - Do not expand abbreviations, correct spelling, or normalise casing.
   - Do not infer `route` from the dosage form, or `dosage_form` from the route.
   - Do not infer `indication` from what the drug is typically prescribed for; it is
     filled only when the note states the reason for that specific medication.
-  - Do not supply a customary `dose`, `quantity`, `frequency` or `duration` because
-    it is the standard regimen for that drug.
-  - Do not resolve ambiguous or redacted text (`___`, unexplained marks) into a
-    guessed value.
-- `flag_is_medication_completed` is the only field that is a judgement about the note
-  rather than an extraction from it. MUST be JSON boolean (true / false / null) — never a string. DO NOT USE QUOTES: write true, NOT "true".
-- Keep every extracted string exactly as it appears in the source (same casing, punctuation and spacing) so spans can be aligned to character offsets.
-- Replace any newline character (\n) inside extracted attribute values or `span_text` with a single space. Newline characters are permitted only in `medications_text`.
+  - Do not supply a customary `dose`, `quantity`, `frequency` or `duration` because it is the standard regimen for that drug.
+  - Do not resolve ambiguous or redacted text (`___`, unexplained marks) into a guessed value.
+- If the note contains no admission medication section at all, set `medications_text` to `null`, `flag_is_medication_completed` to `null`, and `medications` to the empty array `[]`. Never emit a medication object to stand for an absent medication: every object in `medications` requires a non-null `span_text` copied from the note.
+- Keep every extracted string exactly as it appears in the source (same casing, punctuation and spacing).
 
 
 ## Clinical note to be extracted

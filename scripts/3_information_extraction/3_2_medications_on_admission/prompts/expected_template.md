@@ -37,7 +37,7 @@ Types:
 
 - `span_text` is always present and never `null`.
 - `medications_text`, `span_text`, `active_substance`, `commercial_name`, `dosage_form`,  `quantity`, `route`, `duration` and `administration_instructions`: string or `null` - not a list or an empty list.
-- `flag_is_medication_completed`: MUST be JSON boolean (true / false / null) — never a string. DO NOT USE QUOTES: write true, NOT "true". 
+- `flag_is_medication_completed` is the only field that is a judgement about the note rather than an extraction from it. It MUST be an unquoted JSON literal — `true`, `false` or `null`. DO NOT USE QUOTES: write true, NOT "true".
 - `dose`, `frequency` and `indication`: arrays of strings, `[]` when not stated — never `null`, never a bare string. A single value is still wrapped in an array.
 - `medications`: array of objects, `[]` when the section lists no medications.
 
