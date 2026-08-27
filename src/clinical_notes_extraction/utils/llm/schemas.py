@@ -12,8 +12,8 @@ in lax mode Pydantic would accept "true" or 100 and convert them, hiding a
 schema violation that is supposed to be counted.
 
 Scope: this module checks STRUCTURE only. Whether a span actually occurs in
-the source note is extraction quality, not schema conformance, and is measured
-separately -- otherwise a model that emits a perfect envelope with invented
+the source note is extraction quality, not schema conformance, and is out of
+scope here -- otherwise a model that emits a perfect envelope with invented
 content becomes indistinguishable from one that cannot produce the format.
 """
 
@@ -62,7 +62,7 @@ class ExtractionOutput(BaseModel):
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    medications_text: str | None  # String or null; permitted to contain multi-line text (\n)
+    medications_text: Span | None  # String or null; permitted to contain multi-line text (\n)
     flag_is_medication_completed: bool | None  # JSON literal true, false, or null
     medications: list[Medication]  # List of extracted medication objects ([] when empty)
 
