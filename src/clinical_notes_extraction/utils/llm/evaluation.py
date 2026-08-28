@@ -372,10 +372,16 @@ def section_table(scored: Scored) -> pd.DataFrame:
 def per_key_table(scored: Scored, model: str | None = None) -> pd.DataFrame:
     """One row per key, P/R/F1 per cell, plus Macro and Micro.
 
-    Keys with no annotated value anywhere are dropped: an all-zero row describes
-    the split, not the model. ``Macro`` is the unweighted mean over the rows
-    shown, so a rare attribute weighs as much as ``active_substance``; ``Micro``
-    pools their counts and reproduces the headline F1.
+    ``support`` is the number of annotated slots for that key **in one cell**.
+    Gold is the same in every cell, so the figure is invariant across them and
+    must not be summed over the columns.
+
+    A key with ``support == 0`` was never annotated in this split, but it keeps
+    its row: a non-empty row there means the model invented values for a field
+    the annotation never fills, which is a finding rather than noise. It is
+    excluded from ``Macro`` so that the mean is taken over the same key set in
+    every column. ``Micro`` pools every scored slot and therefore reproduces the
+    headline F1 exactly, hallucinations on unannotated keys included.
     """
     slots = scored.slots if model is None else scored.slots[scored.slots.model == model]
 
@@ -391,17 +397,25 @@ def per_key_table(scored: Scored, model: str | None = None) -> pd.DataFrame:
         [(m, s, metric) for m, s in cells for metric in ("P", "R", "F1")]
     ))
 
+    # support per key, taken from one cell rather than summed across them
+    support = (
+        slots.groupby(["model", "strategy", "key"])[["tp", "fn"]].sum().sum(axis=1)
+        .groupby("key").max().reindex(keys).fillna(0).astype(int)
+    )
+    annotated = [k for k in keys if support[k] > 0]
+
     totals = prf(slots.groupby(["model", "strategy"])[["tp", "fp", "fn"]].sum())
     micro = pd.Series({c: totals.loc[(c[0], c[1]), c[2]] for c in wide.columns}, name="Micro")
-    table = pd.concat([wide, wide.mean(axis=0).rename("Macro").to_frame().T, micro.to_frame().T])
-
-    support = slots.groupby("key")[["tp", "fn"]].sum().sum(axis=1).reindex(keys)
-    table.insert(0, "support", list(support) + [support.sum(), support.sum()])
+    macro = wide.loc[annotated].mean(axis=0).rename("Macro")
+    table = pd.concat([wide, macro.to_frame().T, micro.to_frame().T])
 
     if model is not None:  # one model per table: the model level is constant
-        table.columns = pd.MultiIndex.from_tuples(
-            [("", c) if isinstance(c, str) else (c[1], c[2]) for c in table.columns]
-        )
+        table.columns = pd.MultiIndex.from_tuples([(c[1], c[2]) for c in table.columns])
+
+    levels = table.columns.nlevels
+    label = tuple([""] * (levels - 1) + ["support"]) if levels > 1 else "support"
+    table.insert(0, label, list(support) + [support[annotated].sum()] * 2)
+
     table.index.name = "Key"
     return table
 
