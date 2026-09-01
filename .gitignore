@@ -1,9 +1,24 @@
 # Project-specific: snsitive data & outputs
-data/
+
+# Data 
+data*
+config/
+reports/
 .secrets/
 .env
+.config
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+scripts/3_information_extraction/3_2_medications_on_admission/data/
+scripts/3_information_extraction/medications_on_discharge/data/
+
+
+# Outputs
 *.parquet
 *.csv
-mlruns/
-outputs/
-EOF
+
+
+
